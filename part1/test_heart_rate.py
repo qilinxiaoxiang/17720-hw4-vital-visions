@@ -58,10 +58,10 @@ def main():
         r = json.loads(res.stdout)
         expected_beats = bpm / 60 * r["duration_used_s"]
         ok_fft = abs(r["hr_fft_bpm"] - bpm) <= r["fft_bin_spacing_bpm"]
-        ok_peaks = abs(r["hr_peaks_bpm_median_ibi"] - bpm) <= 2.0
+        ok_peaks = abs(r["hr_peaks_bpm_mean_ibi"] - bpm) <= 2.0
         ok_count = abs(r["n_peaks"] - expected_beats) <= 1.5
         line = (f"{bpm:.0f} bpm: fft {r['hr_fft_bpm']:.1f} (bin {r['fft_bin_spacing_bpm']:.2f}), "
-                f"peaks {r['hr_peaks_bpm_median_ibi']:.1f}, beats {r['n_peaks']} vs {expected_beats:.1f}, "
+                f"peaks {r['hr_peaks_bpm_mean_ibi']:.1f}, beats {r['n_peaks']} vs {expected_beats:.1f}, "
                 f"fps {r['timestamp_fps_median']:.2f}")
         print(("PASS " if ok_fft and ok_peaks and ok_count else "FAIL ") + line)
         if not (ok_fft and ok_peaks and ok_count):

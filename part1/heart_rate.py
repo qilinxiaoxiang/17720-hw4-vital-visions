@@ -53,7 +53,7 @@ def probe_fps(video_path):
         out = subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
              "-show_entries", "stream=avg_frame_rate", "-of", "csv=p=0", str(video_path)],
-            capture_output=True, text=True, check=True).stdout.strip()
+            capture_output=True, text=True, check=True).stdout.strip().strip(",")
         num, den = out.split("/")
         return float(num) / float(den)
     except Exception:
@@ -89,7 +89,10 @@ def analyze(times, values, fs, trim_s=1.0, hp_cutoff=0.5, lp_cutoff=4.0):
     min_dist = max(1, int(np.floor(0.7 * period_samples)))
     peaks, _ = find_peaks(ppg, distance=min_dist, prominence=0.3 * np.std(ppg))
     ibi = np.diff(t[peaks])
-    hr_peaks_bpm = float(60.0 / np.median(ibi)) if len(ibi) else float("nan")
+    # Mean interval = beats per unit time. The median snaps to whole-frame intervals
+    # (1/30 s steps), so it is kept only as a secondary figure.
+    hr_peaks_bpm = float(60.0 / np.mean(ibi)) if len(ibi) else float("nan")
+    hr_peaks_median_bpm = float(60.0 / np.median(ibi)) if len(ibi) else float("nan")
 
     return {
         "t": t, "raw": x, "hp": x_hp, "ppg": ppg, "freqs": freqs, "spectrum": spectrum,
@@ -105,7 +108,8 @@ def analyze(times, values, fs, trim_s=1.0, hp_cutoff=0.5, lp_cutoff=4.0):
             "period_samples_at_fft_hr": float(period_samples),
             "min_peak_distance_samples": int(min_dist),
             "n_peaks": int(len(peaks)),
-            "hr_peaks_bpm_median_ibi": hr_peaks_bpm,
+            "hr_peaks_bpm_mean_ibi": hr_peaks_bpm,
+            "hr_peaks_bpm_median_ibi": hr_peaks_median_bpm,
             "ibi_mean_s": float(np.mean(ibi)) if len(ibi) else None,
             "ibi_std_s": float(np.std(ibi)) if len(ibi) else None,
             "hp_cutoff_hz": hp_cutoff,
@@ -146,7 +150,7 @@ def plot(res, out_dir, label):
                  label=f"{r['n_peaks']} detected beats")
     axes[1].set_xlabel("Time (s)")
     axes[1].set_ylabel("Pulse signal (a.u.)")
-    axes[1].set_title(f"Heart rate from peaks: {r['hr_peaks_bpm_median_ibi']:.1f} bpm "
+    axes[1].set_title(f"Heart rate from peaks: {r['hr_peaks_bpm_mean_ibi']:.1f} bpm "
                       f"(min peak distance {r['min_peak_distance_samples']} samples)")
     lo_y, hi_y = res["ppg"].min(), res["ppg"].max()
     axes[1].set_ylim(lo_y, hi_y + 0.45 * (hi_y - lo_y))

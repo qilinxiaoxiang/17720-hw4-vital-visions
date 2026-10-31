@@ -61,17 +61,28 @@ After editing `schedule.js` or the picture, rebuild the self-contained HTML:
 $PY make_background.py && $PY build_transmitter.py
 ```
 
-**Check AirDropped files.** Every file must show about 240 fps.
+**File the AirDropped recordings.** AirDrop with Options > All Photos Data delivers a folder with the original `.MOV` and an `.AAE` slow-motion sidecar; QuickTime plays it slowed down, but the `.MOV` keeps every frame's real timestamp. `file_recordings.py` matches each video to its transmit log by start time and copies both into `Data/part3/`.
 
 ```bash
+$PY file_recordings.py --dry-run && $PY file_recordings.py
 $PY decode_video.py --probe-only ../../Data/part3/p3_da*.mov
 ```
 
-**Decode the recordings.** Expect about 1.5 minutes per file. Run them one at a time with low priority:
+The probe flags files below 240 fps. The iPhone 16 Pro originals here run at about 161 fps (intervals alternate 4.2 and 8.3 ms), which is enough for the 60 Hz tone; a rendered 30 fps slow-motion export is not.
+
+**Decode the recordings.** Expect about 2 minutes per file. `decode_all.sh` runs them one at a time with low priority, with the screen ROI marked by hand for each distance:
 
 ```bash
-nice -n 15 $PY decode_video.py ../../Data/part3/p3_da*.mov --out-root ../../Analysis/Part3/results
+PY=$PY zsh decode_all.sh
 ```
+
+**Diagnose the bit errors.** These read the saved traces and take seconds:
+
+- `error_anatomy.py RESULTS DATA`: error rate by sent bit, tone change and position in the packet.
+- `sampling_test.py RESULTS/p3_da*`: decodes an ideal screen signal sampled at each video's real frame times, which isolates the camera's sampling pattern.
+- `tone_amplitude.py RESULTS/p3_da*`: least-squares pilot tone amplitudes on the real timestamps.
+- `phase_check.py RESULTS/p3_da*`: 60 Hz phase coherence inside correct and failed bit-1 symbols.
+- `show_failed_symbol.py RESULTS/<stem> OUT.png`: raw samples of correct and failed bit-1 symbols.
 
 Each `../../Analysis/Part3/results/<stem>/` gets these files:
 
